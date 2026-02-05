@@ -39,12 +39,12 @@ class SensorStream(DataStream):
                     temp_readings += 1
                     if value >= 30 or value <= 5:
                         self.critical += 1
-                elif (key == "humidity" and
-                    (value >= 80 or value <= 20)):
-                        self.critical += 1
-                elif (key == "pressure" and
-                   (value <= 950 or value >= 1050)):
-                        self.critical += 1
+                elif (key == "humidity"
+                      and (value >= 80 or value <= 20)):
+                    self.critical += 1
+                elif (key == "pressure"
+                      and (value <= 950 or value >= 1050)):
+                    self.critical += 1
         try:
             temp_average = temp_sum / temp_readings
         except ZeroDivisionError:
@@ -53,27 +53,26 @@ class SensorStream(DataStream):
 
     def filter_data(self, data_batch: List[Any],
                     criteria: Optional[str] = None) -> List[Any]:
-        if criteria is None:
-            return super().filter_data(data_batch, criteria)
         data = []
         for batch in data_batch:
             if isinstance(batch, dict):
                 for item in batch.items():
                     key, value = item
-                    if isinstance(key, str) and isinstance(value, int):
-                        if "high-priority" not in criteria:
-                            if (key == "temp" or key == "humidity" or
-                                key == "pressure"):
+                    if (isinstance(key, str)
+                            and isinstance(value, (int, float))):
+                        if criteria is None:
+                            if (key == "temp" or key == "humidity"
+                                    or key == "pressure"):
                                 data.append({key: value})
-                        else:
-                            if (key == "temp" and
-                            (value >= 30 or value <= 5)):
+                        elif "high-priority" in criteria:
+                            if (key == "temp"
+                                    and (value >= 30 or value <= 5)):
                                 data.append({key: value})
-                            elif (key == "humidity" and
-                            (value >= 80 or value <= 20)):
+                            elif (key == "humidity"
+                                    and (value >= 80 or value <= 20)):
                                 data.append({key: value})
-                            elif (key == "pressure" and
-                            (value <= 950 or value >= 1050)):
+                            elif (key == "pressure"
+                                    and (value <= 950 or value >= 1050)):
                                 data.append({key: value})
         return data
 
@@ -113,18 +112,16 @@ class TransactionStream(DataStream):
 
     def filter_data(self, data_batch: List[Any],
                     criteria: Optional[str] = None) -> List[Any]:
-        if criteria is None:
-            return super().filter_data(data_batch, criteria)
         data = []
         for batch in data_batch:
             if isinstance(batch, dict):
                 for item in batch.items():
                     key, value = item
                     if isinstance(key, str) and isinstance(value, int):
-                        if "high-priority" not in criteria:
+                        if criteria is None:
                             if key == "buy" or key == "sell":
                                 data.append({key: value})
-                        else:
+                        elif "high-priority" in criteria:
                             if key == "buy" and value >= 500:
                                 data.append({key: value})
                             elif (key == "sell" and value >= 500):
@@ -161,19 +158,16 @@ class EventStream(DataStream):
             return f"{events} events, {errors} error detected"
         return f"{events} events, {errors} errors detected"
 
-
     def filter_data(self, data_batch: List[Any],
                     criteria: Optional[str] = None) -> List[Any]:
-        if criteria is None:
-            return super().filter_data(data_batch, criteria)
         data = []
         for item in data_batch:
             if isinstance(item, str):
-                if "high-priority" not in criteria:
-                    if (item == "login" or item == "logout" or
-                        item == "error" or item == "failure"):
+                if criteria is None:
+                    if (item == "login" or item == "logout"
+                            or item == "error" or item == "failure"):
                         data.append(item)
-                else:
+                elif "high-priority" in criteria:
                     if item == "failure":
                         data.append(item)
         return data
@@ -188,7 +182,83 @@ class EventStream(DataStream):
 
 
 class StreamProcessor():
-    pass
+    def __init__(self, s_stream: str, t_stream: str, e_stream: str) -> None:
+        self.streams = [
+            SensorStream(s_stream),
+            TransactionStream(t_stream),
+            EventStream(e_stream)
+        ]
+
+    def process_batch(self, data_batch: List[Any],
+                      criteria: Optional[str] = None) -> str:
+        index = 0
+        processed = ""
+        while index < len(self.streams):
+            data = self.streams[index].filter_data(data_batch, criteria)
+            if index == 0:
+                processed += f"- Sensor data: {len(data)} readings processed\n"
+            elif index == 1:
+                processed += "- Transaction data: "
+                f"{len(data)} operations processed\n"
+            elif index == 2:
+                processed += f"- Event data: {len(data)} events processed"
+            index += 1
+        return processed
+
+    def filter_data(self, data_batch: List[Any],
+                    criteria: Optional[str] = None) -> str:
+        result_s = ""
+        result_t = ""
+        result_e = ""
+        result = ""
+        index = 0
+        while index < len(self.streams):
+            filtered = self.streams[index].filter_data(data_batch, criteria)
+            if index == 0 and len(filtered) > 0:
+                if criteria is None:
+                    if len(filtered) == 1:
+                        result_s += f"{len(filtered)} sensor alert"
+                    else:
+                        result_s += f"{len(filtered)} sensor alerts"
+                elif "high-priority" in criteria:
+                    if len(filtered) == 1:
+                        result_s += f"{len(filtered)} critical sensor alert"
+                    else:
+                        result_s += f"{len(filtered)} critical sensor alerts"
+            elif index == 1 and len(filtered) > 0:
+                if criteria is None:
+                    if len(filtered) == 1:
+                        result_t += f"{len(filtered)} transaction"
+                    else:
+                        result_t += f"{len(filtered)} transactions"
+                elif "high-priority" in criteria:
+                    if len(filtered) == 1:
+                        result_t += f"{len(filtered)} large transaction"
+                    else:
+                        result_t += f"{len(filtered)} large transactions"
+            elif index == 2 and len(filtered) > 0:
+                if criteria is None:
+                    if len(filtered) == 1:
+                        result_e += f"{len(filtered)} event"
+                    else:
+                        result_e += f"{len(filtered)} events"
+                elif "high-priority" in criteria:
+                    if len(filtered) == 1:
+                        result_e += f"{len(filtered)} failure event"
+                    else:
+                        result_e += f"{len(filtered)} failure events"
+            index += 1
+        if len(result_s) > 0:
+            result += result_s
+            if len(result_t) > 0 or len(result_e) > 0:
+                result += ", "
+        if len(result_t) > 0:
+            result += result_t
+            if len(result_e) > 0:
+                result += ", "
+        if len(result_e) > 0:
+            result += result_e
+        return result
 
 
 if __name__ == "__main__":
@@ -231,13 +301,18 @@ if __name__ == "__main__":
     print()
     print("=== Polymorphic Stream Processing ===")
     print("Processing mixed stream types through unified interface...")
+    p_stream = StreamProcessor("SENSOR_002", "TRANS_002", "EVENT_002")
+    p_data = [
+        {"temp": 35, "humidity": 99},
+        {"buy": 100, "sell": 150},
+        {"buy": 75, "sell": 600},
+        "login", "error", "logout"
+    ]
     print("")
-"""
-Batch 1 Results:
-- Sensor data: 2 readings processed
-- Transaction data: 4 operations processed
-- Event data: 3 events processed
-Stream filtering active: High-priority data only
-Filtered results: 2 critical sensor alerts, 1 large transaction
-All streams processed successfully. Nexus throughput optimal.
-"""
+    print("Batch 1 Results:")
+    print(p_stream.process_batch(p_data))
+    print()
+    print("Stream filtering active: High-priority data only")
+    print(p_stream.filter_data(p_data, "high-priority"))
+    print()
+    print("All streams processed successfully. Nexus throughput optimal.")
