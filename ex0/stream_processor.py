@@ -19,8 +19,8 @@ class NumericProcessor(DataProcessor):
     def process(self, data: Any) -> str:
         if isinstance(data, (int)):
             return f"Processed 1 numeric value, sum={data}, avg={data}"
-        return f"Processed {len(data)} numeric values, sum={sum(data)}, "
-        f"avg={sum(data) / len(data):.1f}"
+        return (f"Processed {len(data)} numeric values, sum={sum(data)}, "
+                f"avg={sum(data) / len(data):.1f}")
 
     def validate(self, data: Any) -> bool:
         if isinstance(data, List):
@@ -66,11 +66,11 @@ class TextProcessor(DataProcessor):
 
 class LogProcessor(DataProcessor):
     def process(self, data: Any) -> str:
-        if data.find("ERROR"):
+        if "ERROR" in data:
             return "[ALERT] ERROR level detected: Connection timeout"
-        if data.find("INFO"):
+        if "INFO" in data:
             return "[INFO] INFO level detected: System ready"
-        return "[INFO] Default status detected: All functions working"
+        return "[MESSAGE] Default status detected: All functions working"
 
     def validate(self, data: Any) -> bool:
         if not isinstance(data, str):
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     print()
     print("Initializing Log Processor...")
     processor_l = LogProcessor()
-    data_lp = "ERROR: Connection timeou"
+    data_lp = "ERROR: Connection timeout"
     print(f"Processing data: \"{data_lp}\"")
     if processor_l.validate(data_lp):
         print("Validation: Log entry verified")

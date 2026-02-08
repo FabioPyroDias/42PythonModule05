@@ -198,8 +198,8 @@ class StreamProcessor():
             if index == 0:
                 processed += f"- Sensor data: {len(data)} readings processed\n"
             elif index == 1:
-                processed += "- Transaction data: "
-                f"{len(data)} operations processed\n"
+                processed += ("- Transaction data: "
+                              f"{len(data)} operations processed\n")
             elif index == 2:
                 processed += f"- Event data: {len(data)} events processed"
             index += 1
@@ -313,6 +313,7 @@ if __name__ == "__main__":
     print(p_stream.process_batch(p_data))
     print()
     print("Stream filtering active: High-priority data only")
-    print(p_stream.filter_data(p_data, "high-priority"))
+    print("Filtered results: "
+          f"{p_stream.filter_data(p_data, 'high-priority')}")
     print()
     print("All streams processed successfully. Nexus throughput optimal.")
